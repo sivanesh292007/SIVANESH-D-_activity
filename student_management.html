@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Student Management System</title>
+<style>
+  :root{
+    --primary:#2563eb; --primary-dark:#1d4ed8; --bg:#f4f6fb; --card:#ffffff;
+    --text:#1f2937; --muted:#6b7280; --border:#e5e7eb; --danger:#dc2626; --danger-dark:#b91c1c;
+    --success:#059669;
+  }
+  *{box-sizing:border-box;}
+  body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);margin:0;color:var(--text);}
+  header{background:var(--primary);color:#fff;padding:20px 24px;}
+  header h1{margin:0;font-size:22px;}
+  header p{margin:4px 0 0;font-size:13px;opacity:.9;}
+  .container{max-width:960px;margin:24px auto;padding:0 16px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:20px;box-shadow:0 1px 3px rgba(0,0,0,.04);}
+  .card h2{margin-top:0;font-size:16px;color:var(--primary-dark);}
+  form{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;}
+  label{font-size:12px;color:var(--muted);display:block;margin-bottom:4px;}
+  input,select{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:14px;}
+  .form-actions{grid-column:1/-1;display:flex;gap:10px;margin-top:4px;}
+  button{cursor:pointer;border:none;border-radius:6px;padding:9px 16px;font-size:14px;font-weight:600;}
+  .btn-primary{background:var(--primary);color:#fff;}
+  .btn-primary:hover{background:var(--primary-dark);}
+  .btn-secondary{background:#e5e7eb;color:var(--text);}
+  .btn-danger{background:var(--danger);color:#fff;padding:6px 10px;font-size:12px;}
+  .btn-danger:hover{background:var(--danger-dark);}
+  .btn-edit{background:#f59e0b;color:#fff;padding:6px 10px;font-size:12px;margin-right:6px;}
+  table{width:100%;border-collapse:collapse;margin-top:10px;font-size:14px;}
+  th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--border);}
+  th{color:var(--muted);font-size:12px;text-transform:uppercase;}
+  tr:hover{background:#f9fafb;}
+  .toolbar{display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap;align-items:center;}
+  .toolbar input{max-width:260px;}
+  .empty{color:var(--muted);text-align:center;padding:24px;}
+  .msg{padding:8px 12px;border-radius:6px;font-size:13px;margin-bottom:10px;display:none;}
+  .msg.error{background:#fee2e2;color:var(--danger-dark);display:block;}
+  .msg.success{background:#d1fae5;color:var(--success);display:block;}
+  .count{font-size:12px;color:var(--muted);margin-left:auto;}
+  footer{text-align:center;color:var(--muted);font-size:12px;padding:20px;}
+</style>
+</head>
+<body>
+<header>
+  <h1>🎓 Student Management System</h1>
+  <p>Simple CRUD demo — data is saved in your browser (localStorage)</p>
+</header>
+
+<div class="container">
+
+  <div class="card">
+    <h2 id="formTitle">Add New Student</h2>
+    <div id="formMsg" class="msg"></div>
+    <form id="studentForm">
+      <input type="hidden" id="studentId">
+      <div>
+        <label>Full Name *</label>
+        <input type="text" id="name" required>
+      </div>
+      <div>
+        <label>Roll Number *</label>
+        <input type="text" id="rollNo" required>
+      </div>
+      <div>
+        <label>Email *</label>
+        <input type="email" id="email" required>
+      </div>
+      <div>
+        <label>Course</label>
+        <select id="course">
+          <option>B.Sc Computer Science</option>
+          <option>B.Com</option>
+          <option>B.A</option>
+          <option>BBA</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div>
+        <label>Year</label>
+        <select id="year">
+          <option>1</option><option>2</option><option>3</option><option>4</option>
+        </select>
+      </div>
+      <div>
+        <label>Phone</label>
+        <input type="text" id="phone">
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn-primary" id="submitBtn">Add Student</button>
+        <button type="button" class="btn-secondary" id="cancelBtn" style="display:none;">Cancel</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>Student Records</h2>
+    <div class="toolbar">
+      <input type="text" id="search" placeholder="Search by name or roll no...">
+      <span class="count" id="recordCount"></span>
+    </div>
+    <table id="studentTable">
+      <thead>
+        <tr><th>Roll No</th><th>Name</th><th>Email</th><th>Course</th><th>Year</th><th>Phone</th><th>Actions</th></tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+    <div class="empty" id="emptyState" style="display:none;">No student records yet. Add one above.</div>
+  </div>
+</div>
+<footer>Student Management System — CRUD demo (Create, Read, Update, Delete)</footer>
+
+<script>
+// ---------- "Database" layer (localStorage acts as our simple persistent store) ----------
+const DB_KEY = 'sms_students_v1';
+
+function dbGetAll(){
+  return JSON.parse(localStorage.getItem(DB_KEY) || '[]');
+}
+function dbSaveAll(list){
+  localStorage.setItem(DB_KEY, JSON.stringify(list));
+}
+// CREATE
+function dbCreate(student){
+  const list = dbGetAll();
+  student.id = Date.now().toString();
+  list.push(student);
+  dbSaveAll(list);
+  return student;
+}
+// READ
+function dbReadAll(){ return dbGetAll(); }
+// UPDATE
+function dbUpdate(id, updated){
+  const list = dbGetAll().map(s => s.id === id ? {...s, ...updated, id} : s);
+  dbSaveAll(list);
+}
+// DELETE
+function dbDelete(id){
+  dbSaveAll(dbGetAll().filter(s => s.id !== id));
+}
+function dbFindByRoll(rollNo, excludeId){
+  return dbGetAll().find(s => s.rollNo.toLowerCase() === rollNo.toLowerCase() && s.id !== excludeId);
+}
+
+// ---------- UI layer ----------
+const form = document.getElementById('studentForm');
+const tableBody = document.getElementById('tableBody');
+const emptyState = document.getElementById('emptyState');
+const formMsg = document.getElementById('formMsg');
+const searchInput = document.getElementById('search');
+const cancelBtn = document.getElementById('cancelBtn');
+const submitBtn = document.getElementById('submitBtn');
+const formTitle = document.getElementById('formTitle');
+const recordCount = document.getElementById('recordCount');
+
+function showMsg(text, type){
+  formMsg.textContent = text;
+  formMsg.className = 'msg ' + type;
+  setTimeout(() => { formMsg.className = 'msg'; }, 3000);
+}
+
+function render(filter=''){
+  const list = dbReadAll().filter(s =>
+    s.name.toLowerCase().includes(filter.toLowerCase()) ||
+    s.rollNo.toLowerCase().includes(filter.toLowerCase())
+  );
+  tableBody.innerHTML = '';
+  emptyState.style.display = list.length ? 'none' : 'block';
+  recordCount.textContent = list.length + ' record(s)';
+  list.forEach(s => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${escapeHtml(s.rollNo)}</td>
+      <td>${escapeHtml(s.name)}</td>
+      <td>${escapeHtml(s.email)}</td>
+      <td>${escapeHtml(s.course)}</td>
+      <td>${escapeHtml(s.year)}</td>
+      <td>${escapeHtml(s.phone||'-')}</td>
+      <td>
+        <button class="btn-edit" onclick="editStudent('${s.id}')">Edit</button>
+        <button class="btn-danger" onclick="deleteStudent('${s.id}')">Delete</button>
+      </td>`;
+    tableBody.appendChild(tr);
+  });
+}
+
+function escapeHtml(str){
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+form.addEventListener('submit', function(e){
+  e.preventDefault();
+  const id = document.getElementById('studentId').value;
+  const name = document.getElementById('name').value.trim();
+  const rollNo = document.getElementById('rollNo').value.trim();
+  const email = document.getElementById('email').value.trim();
+  const course = document.getElementById('course').value;
+  const year = document.getElementById('year').value;
+  const phone = document.getElementById('phone').value.trim();
+
+  // ---- Validation (client-side, mirrors server-side validation rules in a real backend) ----
+  if(!name || !rollNo || !email){
+    showMsg('Name, Roll Number and Email are required.', 'error'); return;
+  }
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if(!emailPattern.test(email)){
+    showMsg('Please enter a valid email address.', 'error'); return;
+  }
+  const dup = dbFindByRoll(rollNo, id || null);
+  if(dup){
+    showMsg('Roll number already exists. Roll numbers must be unique.', 'error'); return;
+  }
+
+  const student = {name, rollNo, email, course, year, phone};
+
+  if(id){
+    dbUpdate(id, student);
+    showMsg('Student updated successfully.', 'success');
+  } else {
+    dbCreate(student);
+    showMsg('Student added successfully.', 'success');
+  }
+  resetForm();
+  render(searchInput.value);
+});
+
+function editStudent(id){
+  const s = dbReadAll().find(x => x.id === id);
+  if(!s) return;
+  document.getElementById('studentId').value = s.id;
+  document.getElementById('name').value = s.name;
+  document.getElementById('rollNo').value = s.rollNo;
+  document.getElementById('email').value = s.email;
+  document.getElementById('course').value = s.course;
+  document.getElementById('year').value = s.year;
+  document.getElementById('phone').value = s.phone;
+  formTitle.textContent = 'Edit Student';
+  submitBtn.textContent = 'Update Student';
+  cancelBtn.style.display = 'inline-block';
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function deleteStudent(id){
+  if(confirm('Delete this student record? This cannot be undone.')){
+    dbDelete(id);
+    render(searchInput.value);
+    showMsg('Student record deleted.', 'success');
+  }
+}
+
+cancelBtn.addEventListener('click', resetForm);
+
+function resetForm(){
+  form.reset();
+  document.getElementById('studentId').value = '';
+  formTitle.textContent = 'Add New Student';
+  submitBtn.textContent = 'Add Student';
+  cancelBtn.style.display = 'none';
+}
+
+searchInput.addEventListener('input', () => render(searchInput.value));
+
+render();
+</script>
+</body>
+</html>
